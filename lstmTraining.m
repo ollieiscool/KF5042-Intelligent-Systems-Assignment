@@ -1,19 +1,24 @@
+%Load embeddings
 rng('default');
 emb = fastTextWordEmbedding;
 
+%Load dataset
 reviews = readtable("train.csv", "TextType", "string");
 humanScore = reviews.user_suggestion;
 
+%Partition the dataset into training and testing sets
 reviews.user_suggestion = categorical(reviews.user_suggestion);
 cvp = cvpartition(humanScore, 'HoldOut', 0.2);
 trainSet = reviews(training(cvp),:);
 testSet = reviews(test(cvp),:);
 
+%Pre-process reviews
 reviewsTrain = preProcessReviews(trainSet.user_review);
 reviewsTest = preProcessReviews(testSet.user_review);
 trainY = trainSet.user_suggestion;
 testY = testSet.user_suggestion;
 
+%Encode the words to numerical indices
 enc = wordEncoding(reviewsTrain);
 seqLength = 300;
 trainX = doc2sequence(enc, reviewsTrain, "Length", seqLength);

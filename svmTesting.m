@@ -1,16 +1,22 @@
+%Load the dataset and pre-process text
 reviews = readtable("train.csv", "TextType", "string");
 textData = reviews.user_review;
 humanScore = reviews.user_suggestion;
 processedRevs = preProcessReviews(textData);
 
+%Remove words not in the embeddings
 duffWords = ~isVocabularyWord(emb, processedRevs.Vocabulary);
 removeWords(processedRevs, duffWords);
 
+%Convert words to vectors and predict the sentiment of the reviews using
+%the SVM
 sentimentScore = zeros(size(processedRevs));
 for ii = 1 : processedRevs.length
     vocabWords = processedRevs(ii).Vocabulary;
     vectors = word2vec(emb, vocabWords);
     [~, predScores] = predict(trainedSVM, vectors);
+    %If NaN values are found use the table of words without them if not 
+    %use the original table of words
     noMissing = rmmissing(predScores);
     if (isempty(noMissing) == true)
         sentimentScore(ii) = mean(predScores(:, 1));
@@ -22,6 +28,8 @@ for ii = 1 : processedRevs.length
         sentimentScore(ii) = 0;
     end
 
+    %Find the coverage, tp, tn, fp, fn, accuracy, precision, recall and F1
+    %score.
 fprintf('Sent: %d, words: %s, FoundScore: %d, GoldScore: %d\n', ii, joinWords(processedRevs(ii)), sentimentScore(ii), humanScore(ii));
 end
 
@@ -39,6 +47,8 @@ f1Score = (2*prec*rec)/(prec + rec);
 fprintf("Accuracy: %2.2f%%, TP: %d, FP: %d, TN: %d, FN: %d\n", acc, numel(truePos), numel(falsePos), numel(trueNeg), numel(falseNeg));
 fprintf("Precision: %2.2f%%, Recall: %2.2f%%, F1 Score: %2.2f%%\n", prec, rec, f1Score);
 
+%Add labels to each of the reviews for their human-set score and predicted
+%score
 predLabels = zeros(size(sentimentScore));
 humanLabels = zeros(size(sentimentScore));
 for ii = 1 : processedRevs.length
@@ -53,6 +63,7 @@ for ii = 1 : processedRevs.length
         predLabels(ii) = 0;
     end
 end
+%Plot confusion
 humanLabels = categorical(humanLabels);
 predLabels = categorical(predLabels);
 plotconfusion(humanLabels, predLabels);
